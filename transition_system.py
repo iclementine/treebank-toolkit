@@ -312,3 +312,4 @@ class ArcEagerReduce(TransitionSystemBase):
             return tsn
         elif control == "joint":
             return "{}_{}".format(tsn, lbl)
+
