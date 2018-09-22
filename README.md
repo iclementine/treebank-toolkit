@@ -79,7 +79,6 @@ while not (len(state.stack) == 1 and len(state.buf) == 0):
     print(std.action_to_str(gold_action))
     state = std.step(state, gold_action)
 ```
-```
 
 Enjoy the simplicity!
 
