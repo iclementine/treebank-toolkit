@@ -1,4 +1,4 @@
-from conllu import ConllSent
+from sentence import ConllSent
 from parser_state import State 
 
 
