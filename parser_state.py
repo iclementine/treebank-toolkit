@@ -6,9 +6,8 @@ Note
 from copy import copy
 
 class State(object):
-    def __init__(self, sent, transys=None, stack=None, buf=None, seen_the_end=False, tags=None, arcs=None):
+    def __init__(self, sent, stack=None, buf=None, seen_the_end=False, tags=None, arcs=None):
         self.sent = sent
-        self.transys= transys
         self.stack = copy(stack)
         self.buf = copy(buf)
         self.seen_the_end = seen_the_end # added for the Arc-Eager system with tree constraint
@@ -16,23 +15,22 @@ class State(object):
         self.arcs = copy(arcs)
         
     @classmethod
-    def init_from_sent(cls, sent, transys=None):
+    def init_from_sent(cls, sent):
         stack = [0]
         buf = list(reversed(range(1, len(sent) + 1))) # mind that len doesn't include <root>
         tags = {}
         arcs = {}
         seen_the_end = False
-        return cls(sent, transys, stack, buf, seen_the_end, tags, arcs)
+        return cls(sent, stack, buf, seen_the_end, tags, arcs)
    
     @classmethod
     def copy(cls, state):
-        res = cls(state.sent, state.transys, state.stack, state.buf, state.seen_the_end, state.tags, state.arcs)
+        res = cls(state.sent, state.stack, state.buf, state.seen_the_end, state.tags, state.arcs)
         return res
     
     def __repr__(self):
-        return "State({},\ntransys={},\nstack={},\nbuf={},\nseen_the_end={},\ntags={},\narcs={})".format(
+        return "State({},\nstack={},\nbuf={},\nseen_the_end={},\ntags={},\narcs={})".format(
             repr(self.sent),
-            repr(self.transys),
             repr(self.stack),
             repr(self.buf),
             repr(self.seen_the_end),
