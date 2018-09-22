@@ -1,9 +1,6 @@
-#from conllu import ConllSent
-#from parser_state import State 
+from conllu import ConllSent
+from parser_state import State 
 
-"""
-Still many bugs, for ArcEager, random action still cannot gurantee it is a tree.
-"""
 
 class TransitionSystemBase(object):
     def _valid_transitions(self, parserstate):
@@ -70,6 +67,8 @@ class ArcStandard(TransitionSystemBase):
         if tsn == SHIFT:
             tags[buf[-1]] = lbl
             stack.append(buf.pop())
+            if len(buf) == 0:
+                state.seen_the_end = True
         elif tsn == LEFT:
             arcs[stack[-2]] = (stack[-1],  lbl) 
             stack.pop(-2)
@@ -129,7 +128,6 @@ class ArcStandard(TransitionSystemBase):
             return "{}_{}".format(tsn, lbl)
 
 class ArcHybrid(ArcStandard):
-    _actions_list = ["Shift", "Left-Reduce", "Right-Reduce"]
     def _valid_transitions(self, parser_state):
         SHIFT, LEFT, RIGHT = self._actions_list
         
@@ -166,6 +164,8 @@ class ArcHybrid(ArcStandard):
         if tsn == SHIFT:
             tags[buf[-1]] = lbl
             stack.append(buf.pop())
+            if len(buf) == 0:
+                state.seen_the_end = False
         elif tsn == LEFT:
             arcs[stack[-1]] = (buf[-1], lbl)
             stack.pop()
@@ -207,32 +207,51 @@ class ArcHybrid(ArcStandard):
         return (tsn, lbl)
     
 class ArcEagerReduce(TransitionSystemBase):
-    _actions_list = ["Shift", "Left-Arc", "Right-Arc", "Reduce"]
+    """
+    Modified as Nivre and Fernandex-Gonzalez (2014) `Arc-Eager Parsing with the Tree Constraint`, adding a new transition Unshift and adding a new member in parser state, and the modification to the parser state in extended to all the parser states, even those used with Arc Standard, though it is not needed.
+    ref: http://www.aclweb.org/anthology/J14-2002
+    """
+    _actions_list = ["Shift", "Left-Arc", "Right-Arc", "Reduce", "Unshift"]
     
     def _valid_transitions(self, parser_state):
-        SHIFT, LEFT, RIGHT, REDUCE = self._actions_list
+        SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = self._actions_list
         
         stack, buf, tags, arcs = parser_state.stack, parser_state.buf, parser_state.tags, parser_state.arcs
         
         valid_transitions = []
         
-        if len(buf) > 1:
-            valid_transitions.append(SHIFT)
-        if len(buf) > 0 and len(stack) > 1 and stack[-1] in arcs:
-            valid_transitions.append(REDUCE)
-        
-        left_possible = False
-        if len(buf) > 0 and len(stack) > 1 and stack[-1] not in arcs:
-            valid_transitions.append(LEFT)
-            left_possible = True
-        
-        if (len(buf) > 0) or (len(buf) == 1 and not left_possible): #TODO: future checking
-            valid_transitions.append(RIGHT)
+        if parser_state.seen_the_end == False:
+            if len(buf) > 1: # before we have seen the end
+                valid_transitions.append(SHIFT)
+                
+            if (len(stack) > 2 or (len(stack) == 2 and len(buf) == 0)) and stack[-1] in arcs: 
+                valid_transitions.append(REDUCE)
             
+            left_possible = False
+            if len(buf) > 0 and len(stack) > 1 and stack[-1] not in arcs:
+                valid_transitions.append(LEFT)
+                left_possible = True
+            
+            if (len(buf) > 1) or (len(buf) == 1 and not left_possible):
+                valid_transitions.append(RIGHT)
+        else:
+            if len(buf) == 0:
+                if len(stack) > 1:
+                    if stack[-1] in arcs:
+                        valid_transitions.append(REDUCE)
+                    else:
+                        valid_transitions.append(UNSHIFT)
+            else: # len(buf) > 0
+                valid_transitions.append(RIGHT)
+                if stack[-1] not in arcs:
+                    valid_transitions.append(LEFT)
+                else:
+                    valid_transitions.append(REDUCE)
+
         return valid_transitions
     
     def step(self, parser_state, action):
-        SHIFT, LEFT, RIGHT, REDUCE = self._actions_list
+        SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = self._actions_list
         if isinstance(action, tuple):
             tsn, lbl = action
         else:
@@ -250,6 +269,8 @@ class ArcEagerReduce(TransitionSystemBase):
         if tsn == SHIFT:
             tags[buf[-1]] = lbl
             stack.append(buf.pop())
+            if len(buf) == 0:
+                state.seen_the_end = True
         elif tsn == LEFT:
             arcs[stack[-1]] = (buf[-1], lbl)
             stack.pop()
@@ -257,6 +278,10 @@ class ArcEagerReduce(TransitionSystemBase):
             tags[buf[-1]] = lbl
             arcs[buf[-1]] = (stack[-1], lbl)
             stack.append(buf.pop())
+            if len(buf) == 0:
+                state.seen_the_end = True
+        elif tsn == UNSHIFT:
+            buf.append(stack.pop())
         else:
             tags[stack[-1]] = lbl
             stack.pop()
@@ -264,12 +289,14 @@ class ArcEagerReduce(TransitionSystemBase):
         return state
     
     def gold_action(self, parser_state):
-        SHIFT, LEFT, RIGHT, REDUCE = self._actions_list
+        SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = self._actions_list
         
         stack = parser_state.stack
         buf = parser_state.buf
         arcs = parser_state.arcs
         upos = parser_state.sent.upos
+        
+        # reference
         heads = parser_state.sent.head
         deprels = parser_state.sent.deprel
         
@@ -280,23 +307,26 @@ class ArcEagerReduce(TransitionSystemBase):
                 stack_top_done = False
                 break
         
-        if heads[stack[-1]] == buf[-1]:
+        if len(stack) > 1 and len(buf) > 0 and heads[stack[-1]] == buf[-1]:
             lbl = deprels[stack[-1]]
             tsn = LEFT
-        elif heads[buf[-1]] == stack[-1]:
+        elif len(stack) > 0 and len(buf) > 0 and heads[buf[-1]] == stack[-1]:
             lbl = deprels[buf[-1]]
             tsn = RIGHT
-        elif stack[-1] in arcs and stack_top_done:
+        elif len(stack) > 1 and stack[-1] in arcs and stack_top_done:
             lbl = upos[stack[-1]]
             tsn = REDUCE
-        else:
+        elif state.seen_the_end and (buf) == 0 and len(stack) > 1 and not stack[-1] in arcs:
+            lbl = "_"
+            tsn = UNSHIFT
+        elif not state.seen_the_end:
             lbl = upos[buf[-1]]
             tsn = SHIFT
         
         return (tsn, lbl)
     
     def action_to_str(self, action, control="normal"):
-        SHIFT, LEFT, RIGHT, REDUCE = self._actions_list
+        SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = self._actions_list
         
         if isinstance(action, tuple):
             tsn, lbl = action
@@ -304,7 +334,7 @@ class ArcEagerReduce(TransitionSystemBase):
             tsn, lbl = action, '_'
         
         if control == "normal":
-            if tsn == SHIFT or tsn == REDUCE:
+            if tsn == SHIFT or tsn == REDUCE or tsn == UNSHIFT:
                 return tsn
             else:
                 return "{}_{}".format(tsn, lbl)
@@ -313,3 +343,49 @@ class ArcEagerReduce(TransitionSystemBase):
         elif control == "joint":
             return "{}_{}".format(tsn, lbl)
 
+class ArcEagerShift(ArcEagerReduce):
+    def gold_action(self, parser_state):
+        SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = self._actions_list
+        
+        stack = parser_state.stack
+        buf = parser_state.buf
+        arcs = parser_state.arcs
+        upos = parser_state.sent.upos
+        
+        # reference
+        heads = parser_state.sent.head
+        deprels = parser_state.sent.deprel
+        
+        stack_top_children = parser_state.sent.children[stack[-1]]
+        has_right_children = False
+        for i in buf:
+            if i in stack_top_children:
+                has_right_children = True
+                break
+
+        must_reduce = False
+        if len(buf) > 0:
+            for i in reversed(stack):
+                if heads[i] == buf[-1] or heads[buf[-1]] == i:
+                    must_reduce = True
+                    break
+                if i not in arcs:
+                    break
+        
+        if len(stack) > 1 and len(buf) > 0 and heads[stack[-1]] == buf[-1]:
+            lbl = deprels[stack[-1]]
+            tsn = LEFT
+        elif len(stack) > 0 and len(buf) > 0 and heads[buf[-1]] == stack[-1]:
+            lbl = deprels[buf[-1]]
+            tsn = RIGHT
+        elif (not state.seen_the_end) and not must_reduce or stack[-1] not in arcs or has_right_children:
+            lbl = upos[buf[-1]]
+            tsn = SHIFT
+        elif len(stack) > 1 and stack[-1] in arcs:
+            lbl = upos[stack[-1]]
+            tsn = REDUCE
+        elif state.seen_the_end and (buf) == 0 and len(stack) > 1 and not stack[-1] in arcs:
+            lbl = "_"
+            tsn = UNSHIFT
+            
+        return (tsn, lbl)
