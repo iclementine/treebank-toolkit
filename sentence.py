@@ -13,6 +13,7 @@ class ConllSent(object):
         self.head = [-1] + head
         self.deprel = ['ROOT'] + deprel
         self.children = self._derive_children()
+        self.transitions = None
     
     @classmethod
     def from_conllu(cls, sent):
