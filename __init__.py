@@ -6,4 +6,12 @@ __version__ = '0.1.0'
 
 __all__ = ['sentence',
            'parser_state',
-           'transition_system']
+           'transition_system',
+           'State',
+           'ConllSent',
+           'TransitionSystemBase', 
+           'ArcStandard', 
+           'ArcHybrid', 
+           'ArcEagerReduce', 
+           'ArcEagerShift'
+           ]

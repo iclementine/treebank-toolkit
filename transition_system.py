@@ -1,5 +1,5 @@
-from sentence import ConllSent
-from parser_state import State 
+from .sentence import ConllSent
+from .parser_state import State 
 
 
 class TransitionSystemBase(object):
