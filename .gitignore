@@ -3,6 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Kdevelop
+.kde4/
+*.kdev4
+
+# Dolphin
+.directory
+
 # C extensions
 *.so
 
