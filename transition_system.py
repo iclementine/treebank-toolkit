@@ -34,6 +34,7 @@ class TransitionSystemBase(object):
 class ArcStandard(TransitionSystemBase):
     _actions_list = ["Shift", "Left-Reduce", "Right-Reduce"]
     
+    @classmethod
     def _valid_transitions(cls, parser_state):
         SHIFT, LEFT, RIGHT = cls._actions_list
         
@@ -50,6 +51,7 @@ class ArcStandard(TransitionSystemBase):
         
         return valid_transitions
     
+    @classmethod
     def step(cls, parser_state, action):
         """
         action is a tuple of str 
@@ -83,6 +85,7 @@ class ArcStandard(TransitionSystemBase):
         
         return state
     
+    @classmethod
     def gold_action(cls, parser_state):
         """
         derive next gold action from reference, which in included in the parser_state.
@@ -114,6 +117,7 @@ class ArcStandard(TransitionSystemBase):
         
         return (tsn, lbl)
     
+    @classmethod
     def action_to_str(cls, action, control="normal"):
         SHIFT, LEFT, RIGHT = cls._actions_list
         
@@ -133,6 +137,7 @@ class ArcStandard(TransitionSystemBase):
             return "{}_{}".format(tsn, lbl)
 
 class ArcHybrid(ArcStandard):
+    @classmethod
     def _valid_transitions(cls, parser_state):
         SHIFT, LEFT, RIGHT = cls._actions_list
         
@@ -150,7 +155,8 @@ class ArcHybrid(ArcStandard):
             valid_transitions = [RIGHT]
         
         return valid_transitions
-        
+    
+    @classmethod
     def step(cls, parser_state, action):
         SHIFT, LEFT, RIGHT = cls._actions_list
         if isinstance(action, tuple):
@@ -180,6 +186,7 @@ class ArcHybrid(ArcStandard):
         
         return state
     
+    @classmethod
     def gold_action(cls, parser_state):
         """
         derive next gold action from reference, which in included in the parser_state.
@@ -218,6 +225,7 @@ class ArcEagerReduce(TransitionSystemBase):
     """
     _actions_list = ["Shift", "Left-Arc", "Right-Arc", "Reduce", "Unshift"]
     
+    @classmethod
     def _valid_transitions(cls, parser_state):
         SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = cls._actions_list
         
@@ -255,6 +263,7 @@ class ArcEagerReduce(TransitionSystemBase):
 
         return valid_transitions
     
+    @classmethod
     def step(cls, parser_state, action):
         SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = cls._actions_list
         if isinstance(action, tuple):
@@ -293,6 +302,7 @@ class ArcEagerReduce(TransitionSystemBase):
         
         return state
     
+    @classmethod
     def gold_action(cls, parser_state):
         SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = cls._actions_list
         
@@ -300,6 +310,7 @@ class ArcEagerReduce(TransitionSystemBase):
         buf = parser_state.buf
         arcs = parser_state.arcs
         upos = parser_state.sent.upos
+        state = parser_state
         
         # reference
         heads = parser_state.sent.head
@@ -330,6 +341,7 @@ class ArcEagerReduce(TransitionSystemBase):
         
         return (tsn, lbl)
     
+    @classmethod
     def action_to_str(cls, action, control="normal"):
         SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = cls._actions_list
         
@@ -349,6 +361,7 @@ class ArcEagerReduce(TransitionSystemBase):
             return "{}_{}".format(tsn, lbl)
 
 class ArcEagerShift(ArcEagerReduce):
+    @classmethod
     def gold_action(cls, parser_state):
         SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = cls._actions_list
         
@@ -356,6 +369,7 @@ class ArcEagerShift(ArcEagerReduce):
         buf = parser_state.buf
         arcs = parser_state.arcs
         upos = parser_state.sent.upos
+        state = parser_state
         
         # reference
         heads = parser_state.sent.head
@@ -394,3 +408,126 @@ class ArcEagerShift(ArcEagerReduce):
             tsn = UNSHIFT
             
         return (tsn, lbl)
+
+class ArcStandardSwap(TransitionSystemBase):
+    _actions_list = ["Shift", "Left-Reduce", "Right-Reduce", "Swap"]
+    
+    @classmethod
+    def _valid_transitions(cls, parser_state):
+        SHIFT, LEFT, RIGHT, SWAP = cls._actions_list
+        
+        stack, buf = parser_state.stack, parser_state.buf
+        
+        valid_transitions = []
+        
+        if len(buf) > 0:
+            valid_transitions.append(SHIFT)
+        if len(stack) > 2:
+            valid_transitions.extend([LEFT, RIGHT])
+            if stack[-1] > stack[-2]:
+                valid_transitions.extend([SWAP])
+        elif len(stack) == 2 and len(buf) == 0:
+            valid_transitions = [RIGHT]
+        
+        return valid_transitions
+    
+    @classmethod
+    def gold_action(cls, parser_state):
+        """
+        derive next gold action from reference, which in included in the parser_state.
+        """
+        SHIFT, LEFT, RIGHT, SWAP = cls._actions_list
+        
+        stack = parser_state.stack
+        buf = parser_state.buf
+        upos = parser_state.sent.upos
+        heads = parser_state.sent.head
+        deprels = parser_state.sent.deprel
+        projective_order = parser_state.sent.porder
+        stack_top_children = parser_state.sent.children[stack[-1]]
+        if len(stack) > 1:
+            stack2_children = parser_state.sent.children[stack[-2]]
+        
+        stack_top_done = True
+        for x in buf:
+            if x in stack_top_children:
+                stack_top_done = False
+                break
+        if len(stack) > 1:
+            stack2_children = parser_state.sent.children[stack[-2]]
+            stack2_done = True
+            for x in buf:
+                if x in stack2_children:
+                    stack2_done = False
+                    break
+        
+        if len(stack) > 2 and heads[stack[-2]] == stack[-1] and stack2_done:
+            lbl = deprels[stack[-2]]
+            tsn = LEFT
+        elif len(stack) > 1 and heads[stack[-1]] == stack[-2] and stack_top_done:
+            lbl = deprels[stack[-1]]
+            tsn = RIGHT
+        elif len(stack) > 2 and projective_order.index(stack[-1]) < projective_order.index(stack[-2]):
+            lbl = upos[stack[-2]]
+            tsn = SWAP
+        else:
+            lbl = upos[buf[-1]]
+            tsn = SHIFT
+        
+        return (tsn, lbl)
+    
+    @classmethod
+    def step(cls, parser_state, action):
+        """
+        action is a tuple of str 
+        """
+        SHIFT, LEFT, RIGHT, SWAP = cls._actions_list
+        if isinstance(action, tuple):
+            tsn, lbl = action
+        else:
+            tsn, lbl = action, "_"
+        
+        state = State.copy(parser_state)
+        stack = state.stack
+        buf = state.buf
+        tags = state.tags
+        arcs = state.arcs
+        
+        cand = cls._valid_transitions(state)
+        assert tsn in cand
+        
+        if tsn == SHIFT:
+            tags[buf[-1]] = lbl
+            stack.append(buf.pop())
+            if len(buf) == 0:
+                state.seen_the_end = True
+        elif tsn == LEFT:
+            arcs[stack[-2]] = (stack[-1],  lbl) 
+            stack.pop(-2)
+        elif tsn == RIGHT:
+            arcs[stack[-1]] = (stack[-2], lbl)
+            stack.pop()
+        elif tsn == SWAP:
+            buf.append(stack.pop(-2))
+            
+        return state
+    
+    @classmethod
+    def action_to_str(cls, action, control="normal"):
+        SHIFT, LEFT, RIGHT, SWAP = cls._actions_list
+        
+        if isinstance(action, tuple):
+            tsn, lbl = action
+        else:
+            tsn, lbl = action, '_'
+        
+        if control == "normal":
+            if tsn == SHIFT or tsn == SWAP:
+                return tsn
+            else:
+                return "{}_{}".format(tsn, lbl)
+        elif control == "backbone":
+            return tsn
+        elif control == "joint":
+            return "{}_{}".format(tsn, lbl)
+    

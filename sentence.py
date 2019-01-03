@@ -13,6 +13,7 @@ class ConllSent(object):
         self.head = [-1] + head
         self.deprel = ['ROOT'] + deprel
         self.children = self._derive_children()
+        self.porder = self._projective_order()
         self.transitions = None
     
     @classmethod
@@ -33,6 +34,19 @@ class ConllSent(object):
         for idx, h in enumerate(self.head[1:], 1): # exclude virtual <root>
             deps[h].append(idx)
         return deps
+    
+    def _projective_order(self):
+        return list(self._in_order_traverse(self.children, 0))
+    
+    @classmethod
+    def _in_order_traverse(cls, children, start=0):
+        for x in children[start]: 
+            if x < start: 
+                yield from cls._in_order_traverse(children, x) 
+        yield start 
+        for x in children[start]: 
+            if x > start: 
+                yield from cls._in_order_traverse(children, x)
     
     def __len__(self):
         return len(self.form) - 1
