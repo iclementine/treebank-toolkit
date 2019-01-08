@@ -28,6 +28,9 @@ class State(object):
         res = cls(state.sent, state.stack, state.buf, state.seen_the_end, state.tags, state.arcs)
         return res
     
+    def is_final(self):
+        return len(self.stack) ==1 and len(self.buf) == 0
+    
     def __repr__(self):
         return "State({},\nstack={},\nbuf={},\nseen_the_end={},\ntags={},\narcs={})".format(
             repr(self.sent),

@@ -14,7 +14,7 @@ class ConllSent(object):
         self.deprel = ['ROOT'] + deprel
         self.children = self._derive_children()
         self.porder = self._projective_order()
-        self.transitions = None
+        self.transition = None
     
     @classmethod
     def from_conllu(cls, sent):

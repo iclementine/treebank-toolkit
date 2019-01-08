@@ -15,7 +15,7 @@ class TransitionSystemBase(object):
         raise NotImplementedError()
 
     @classmethod
-    def gold_action(cls, parserstate, goldrels):
+    def gold_action(cls, parserstate):
         """ Returns the next gold transition given the set of gold arcs """
         raise NotImplementedError()
     
@@ -24,7 +24,7 @@ class TransitionSystemBase(object):
         raise NotImplementedError()
 
     @classmethod
-    def action_from_line(cls, line):
+    def str_to_action(cls, string, control):
         raise NotImplementedError()
 
     @classmethod
@@ -32,7 +32,7 @@ class TransitionSystemBase(object):
         return cls._actions_list
     
 class ArcStandard(TransitionSystemBase):
-    _actions_list = ["Shift", "Left-Reduce", "Right-Reduce"]
+    _actions_list = ["Shift", "LeftReduce", "RightReduce"]
     
     @classmethod
     def _valid_transitions(cls, parser_state):
@@ -130,12 +130,22 @@ class ArcStandard(TransitionSystemBase):
             if tsn == SHIFT:
                 return tsn
             else:
-                return "{}_{}".format(tsn, lbl)
+                return "{}-{}".format(tsn, lbl)
         elif control == "backbone":
             return tsn
-        elif control == "joint":
-            return "{}_{}".format(tsn, lbl)
-
+    
+    @classmethod
+    def str_to_action(cls, string, control="normal"):
+        SHIFT, LEFT, RIGHT = cls._actions_list
+        if control == "normal":
+            if string.startswith(SHIFT):
+                tsn, lbl = string, "_"
+            else:
+                tsn, lbl = string.split("-", 1)
+        elif control == "backbone":
+            tsn, lbl = string, "_"
+        return (tsn, lbl)
+        
 class ArcHybrid(ArcStandard):
     @classmethod
     def _valid_transitions(cls, parser_state):
@@ -149,7 +159,7 @@ class ArcHybrid(ArcStandard):
             valid_transitions.append(SHIFT)
         if len(buf) > 0 and len(stack) > 1:
             valid_transitions.append(LEFT)
-        if len(stack) > 2 and stack[-1] not in arcs:
+        if len(stack) > 2: # and stack[-1] not in arcs:
             valid_transitions.append(RIGHT)
         if len(stack) == 2 and len(buf) == 0:
             valid_transitions = [RIGHT]
@@ -223,7 +233,7 @@ class ArcEagerReduce(TransitionSystemBase):
     Modified as Nivre and Fernandex-Gonzalez (2014) `Arc-Eager Parsing with the Tree Constraint`, adding a new transition Unshift and adding a new member in parser state, and the modification to the parser state in extended to all the parser states, even those used with Arc Standard, though it is not needed.
     ref: http://www.aclweb.org/anthology/J14-2002
     """
-    _actions_list = ["Shift", "Left-Arc", "Right-Arc", "Reduce", "Unshift"]
+    _actions_list = ["Shift", "LeftArc", "RightArc", "Reduce", "Unshift"]
     
     @classmethod
     def _valid_transitions(cls, parser_state):
@@ -289,14 +299,14 @@ class ArcEagerReduce(TransitionSystemBase):
             arcs[stack[-1]] = (buf[-1], lbl)
             stack.pop()
         elif tsn == RIGHT:
-            tags[buf[-1]] = lbl
+            #tags[buf[-1]] = lbl # it is safe to do so, only tag when reduce
             arcs[buf[-1]] = (stack[-1], lbl)
             stack.append(buf.pop())
             if len(buf) == 0:
                 state.seen_the_end = True
         elif tsn == UNSHIFT:
             buf.append(stack.pop())
-        else:
+        else: #reduce
             tags[stack[-1]] = lbl
             stack.pop()
         
@@ -333,7 +343,7 @@ class ArcEagerReduce(TransitionSystemBase):
             lbl = upos[stack[-1]]
             tsn = REDUCE
         elif state.seen_the_end and (buf) == 0 and len(stack) > 1 and not stack[-1] in arcs:
-            lbl = "_"
+            lbl = upos[stack[-1]]
             tsn = UNSHIFT
         elif not state.seen_the_end:
             lbl = upos[buf[-1]]
@@ -354,11 +364,24 @@ class ArcEagerReduce(TransitionSystemBase):
             if tsn == SHIFT or tsn == REDUCE or tsn == UNSHIFT:
                 return tsn
             else:
-                return "{}_{}".format(tsn, lbl)
+                return "{}-{}".format(tsn, lbl)
         elif control == "backbone":
             return tsn
-        elif control == "joint":
-            return "{}_{}".format(tsn, lbl)
+        
+    @classmethod
+    def str_to_action(cls, string, control="normal"):
+        """
+        Note that if you expect Shift-POS to cover the whole sentence, it is impossible
+        """
+        SHIFT, LEFT, RIGHT, REDUCE, UNSHIFT = cls._actions_list
+        if control == "normal":
+            if string.startswith(SHIFT) or string.startswith(REDUCE) or string.startswith(UNSHIFT):
+                tsn, lbl = string, "_"
+            else:
+                tsn, lbl = string.split("-", 1)
+        elif control == "backbone":
+            tsn, lbl = string, "_"
+        return (tsn, lbl)
 
 class ArcEagerShift(ArcEagerReduce):
     @classmethod
@@ -404,13 +427,13 @@ class ArcEagerShift(ArcEagerReduce):
             lbl = upos[stack[-1]]
             tsn = REDUCE
         elif state.seen_the_end and (buf) == 0 and len(stack) > 1 and not stack[-1] in arcs:
-            lbl = "_"
+            lbl = upos[stack[-1]]
             tsn = UNSHIFT
             
         return (tsn, lbl)
 
 class ArcStandardSwap(TransitionSystemBase):
-    _actions_list = ["Shift", "Left-Reduce", "Right-Reduce", "Swap"]
+    _actions_list = ["Shift", "LeftReduce", "RightReduce", "Swap"]
     
     @classmethod
     def _valid_transitions(cls, parser_state):
@@ -502,7 +525,7 @@ class ArcStandardSwap(TransitionSystemBase):
             if len(buf) == 0:
                 state.seen_the_end = True
         elif tsn == LEFT:
-            arcs[stack[-2]] = (stack[-1],  lbl) 
+            arcs[stack[-2]] = (stack[-1], lbl)
             stack.pop(-2)
         elif tsn == RIGHT:
             arcs[stack[-1]] = (stack[-2], lbl)
@@ -525,9 +548,18 @@ class ArcStandardSwap(TransitionSystemBase):
             if tsn == SHIFT or tsn == SWAP:
                 return tsn
             else:
-                return "{}_{}".format(tsn, lbl)
+                return "{}-{}".format(tsn, lbl)
         elif control == "backbone":
             return tsn
-        elif control == "joint":
-            return "{}_{}".format(tsn, lbl)
-    
+
+    @classmethod
+    def str_to_action(cls, string, control="normal"):
+        SHIFT, LEFT, RIGHT, SWAP = cls._actions_list
+        if control == "normal":
+            if string.startswith(SHIFT) or string.startswith(SWAP):
+                tsn, lbl = string, "_"
+            else:
+                tsn, lbl = string.split("-", 1)
+        elif control == "backbone":
+            tsn, lbl = string, "_"
+        return (tsn, lbl)

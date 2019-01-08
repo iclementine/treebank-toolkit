@@ -39,9 +39,19 @@ Constraints for valid transitions at each time step. Being a valid transition is
 
 5. action_to_str(cls, action, control), an auxiliary function to transform an action, tuple(transition, label) to a str, which is useful when used with pytext or other toolkits, because mapping from a string to an integer is the standard process for deep learning based NLP developments. But due to different schemes, the representation of an action my be different, sometimes we just need backbone dependency structure, and sometimes labels are considered, and may be tags are integrated into shift or reduce. Modifing a function for deifferent scheme is prone to cause bugs. so we add a layer of abstraction and use the same internal representation for actions.
 
+5. str_to_action(cls, action, control), an auxiliary function to transform a str to action, tuple(transition, label), which is useful when used with pytext or other toolkits, because mapping from a string to an integer is the standard process for deep learning based NLP developments. But due to different schemes, the representation of an action my be different, sometimes we just need backbone dependency structure, and sometimes labels are considered, and may be tags are integrated into shift or reduce. Modifing a function for deifferent scheme is prone to cause bugs. so we add a layer of abstraction and use the same internal representation for actions.
+
 By the way, their are actually other things I do not consider, prepend / append a virtual `<root>` for every sentence, adding a `</s>` for every sentence or not. I just prepend a `<root>` for every sentence and treat it a standard process for simoplicity.
 
-All are tested. Now, it can only handles projective trees.
+All are tested. Given a sentence and a dependency tree, it can generate static oracle by rules. And given a sentence, and follow randomly an action from the generated valid_actions, it can always generate a valid tree, and ends with len(stack) = 1 and len(buffer) = 0.
+
+But unfortuantely, I made things too complicated and it seems that too many options made it difficult to maintain and reusability is not that easy. I had planned to eventually use it as a transition system that would generate dynamic oracle, that is why I tried to made State separate from each other except for the sentence in it. But Parsers with dynamic oracles seem to integrate with the transition system tightly, even you have a transition system that derives dynamic oracle, your parser will have to maintain someting like a transition syetem and all its stacks and buffers(for example, in the stackLSTM model), if you just try to separate them, you would have to write two parts of code in parallel, one for the transition system which manipulate states, and a parser which manipulates its own states. Then the parser tells which action to take, and you have to update two states in parallel. That's ugly. So I decided to just use it for static oracle generation.
+
+So if you just use it for before-hand static oracle generation, it is still clean and neat if you don't look into the details.
+
+## Update
+
+Now, ArcStandard, ArcHybrid, ArcStandardSwap, ArcEagerShift and ArcEagerReduce are all added. Only ArcStandardSwap handles non-projective sentences.
 
 ## Usage
 
@@ -81,4 +91,6 @@ while not (len(state.stack) == 1 and len(state.buf) == 0):
 ```
 
 Enjoy the simplicity!
+
+
 
