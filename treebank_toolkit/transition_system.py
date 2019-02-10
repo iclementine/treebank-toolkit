@@ -1,5 +1,5 @@
-from .sentence import ConllSent
-from .parser_state import State 
+from treebank_toolkit.sentence import ConllSent
+from treebank_toolkit.parser_state import State 
 
 
 class TransitionSystemBase(object):

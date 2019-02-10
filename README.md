@@ -41,6 +41,8 @@ Constraints for valid transitions at each time step. Being a valid transition is
 
 5. str_to_action(cls, action, control), an auxiliary function to transform a str to action, tuple(transition, label), which is useful when used with pytext or other toolkits, because mapping from a string to an integer is the standard process for deep learning based NLP developments. But due to different schemes, the representation of an action my be different, sometimes we just need backbone dependency structure, and sometimes labels are considered, and may be tags are integrated into shift or reduce. Modifing a function for deifferent scheme is prone to cause bugs. so we add a layer of abstraction and use the same internal representation for actions.
 
+**UPDATE** : due to the difference of transition systems, integrating tags with transition in transition systems other than arc standard is not that straight forward, tagging is an action that can be attached to shifting and reducing and even swappping. So there is not real consistency in integrating tagging and transition. So developers may need to do this mannually.
+
 By the way, their are actually other things I do not consider, prepend / append a virtual `<root>` for every sentence, adding a `</s>` for every sentence or not. I just prepend a `<root>` for every sentence and treat it a standard process for simoplicity.
 
 All are tested. Given a sentence and a dependency tree, it can generate static oracle by rules. And given a sentence, and follow randomly an action from the generated valid_actions, it can always generate a valid tree, and ends with len(stack) = 1 and len(buffer) = 0.
@@ -52,6 +54,8 @@ So if you just use it for before-hand static oracle generation, it is still clea
 ## Update
 
 Now, ArcStandard, ArcHybrid, ArcStandardSwap, ArcEagerShift and ArcEagerReduce are all added. Only ArcStandardSwap handles non-projective sentences.
+
+Add `transduce_corpus.py` to process a conll treebank directly, and save the result to a text file that is easily parsed by other programming languages.
 
 ## Usage
 
@@ -88,6 +92,14 @@ while not (len(state.stack) == 1 and len(state.buf) == 0):
     gold_action = std.gold_action(state)
     print(std.action_to_str(gold_action))
     state = std.step(state, gold_action)
+```
+
+## transduce a corpus
+
+cmdline usage
+
+```bash
+python transduce_corpus.py -t arc-standard-swap -p upos -f normal train.conll > train.txt
 ```
 
 Enjoy the simplicity!

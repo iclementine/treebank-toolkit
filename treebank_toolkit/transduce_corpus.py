@@ -10,7 +10,7 @@ parser.add_argument("-t", "--trans", type=str,
 parser.add_argument("-p", "--pos", type=str, choices=['upos', 'xpos'], help="pos column to choose", default='upos')
 parser.add_argument("-f", "--format", type=str, choices=['normal', 'backbone'], help="format for transitions")
 # it is better to use argparse.FileType if the arg represent a file path, it would open it automatically
-parser.add_argument("corpus", type=argparse.FileType('rt', encoding='utf-8'), help="conllcorpus to process")
+parser.add_argument("corpus", type=argparse.FileType('rt', encoding='utf-8'), help="conll corpus to process")
 
 
 transition_systems = {

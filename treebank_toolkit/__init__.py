@@ -1,9 +1,7 @@
-from .parser_state import State
-from .sentence import ConllSent
-from .transition_system import TransitionSystemBase, ArcStandard, ArcHybrid, ArcEagerReduce, ArcEagerShift, ArcStandardSwap
-from .preprocess import build_vocab, gen_oracle
-
-__version__ = '0.1.0'
+from treebank_toolkit.parser_state import State
+from treebank_toolkit.sentence import ConllSent
+from treebank_toolkit.transition_system import TransitionSystemBase, ArcStandard, ArcHybrid, ArcEagerReduce, ArcEagerShift, ArcStandardSwap
+from treebank_toolkit.preprocess import build_vocab, gen_oracle
 
 __all__ = ['sentence',
            'parser_state',

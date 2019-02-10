@@ -4,9 +4,9 @@ import pickle
 import pytext
 import conllu
 
-from .parser_state import State
-from .sentence import ConllSent
-from .transition_system import TransitionSystemBase, ArcStandard, ArcHybrid, ArcEagerReduce, ArcEagerShift, ArcStandardSwap
+from treebank_toolkit.parser_state import State
+from treebank_toolkit.sentence import ConllSent
+from treebank_toolkit.transition_system import TransitionSystemBase, ArcStandard, ArcHybrid, ArcEagerReduce, ArcEagerShift, ArcStandardSwap
 
 def build_vocab(fp, vp, columns=['form', 'xpos', 'deprel', 'transition'], encoding='utf-8', verbose=True):
     """
