@@ -1,6 +1,7 @@
 import argparse
 import conllu
 import treebank_toolkit as tbtk
+import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--trans", type=str, 
@@ -11,6 +12,7 @@ parser.add_argument("-p", "--pos", type=str, choices=['upos', 'xpos'], help="pos
 parser.add_argument("-f", "--format", type=str, choices=['normal', 'backbone'], help="format for transitions")
 # it is better to use argparse.FileType if the arg represent a file path, it would open it automatically
 parser.add_argument("corpus", type=argparse.FileType('rt', encoding='utf-8'), help="conll corpus to process")
+parser.add_argument("-o", "--output", type=argparse.FileType('wt', encoding='utf-8'), help="output file path")
 
 
 transition_systems = {
@@ -20,7 +22,7 @@ transition_systems = {
   'arc-eager-shift': tbtk.ArcEagerShift,
   'arc-standard-swap': tbtk.ArcStandardSwap}
 
-def transduce(corpus, trans, control='normal', pos='upos'):
+def transduce(corpus, trans, control='normal', pos='upos', out=sys.stdout):
   """
   args:
     corpus: TextIOWrapper, the corpus to process
@@ -37,12 +39,12 @@ def transduce(corpus, trans, control='normal', pos='upos'):
       transitions.append(trans.action_to_str(g))
       state = trans.step(state, g)
     s.transitions = transitions
-    print("form:", ' '.join(s.form))
-    print("pos:", ' '.join(s.upos if pos == 'upos' else s.xpos))
-    print("head:", ' '.join(str(x) for x in s.head))
-    print("deprel:", ' '.join(s.deprel))
-    print("transitions:", ' '.join(s.transitions))
-    print()
+    print("form:", ' '.join(s.form), file=out)
+    print("pos:", ' '.join(s.upos if pos == 'upos' else s.xpos), file=out)
+    print("head:", ' '.join(str(x) for x in s.head), file=out)
+    print("deprel:", ' '.join(s.deprel), file=out)
+    print("transitions:", ' '.join(s.transitions), file=out)
+    print(file=out)
 
 if __name__ == "__main__":
   args = parser.parse_args()
@@ -50,6 +52,7 @@ if __name__ == "__main__":
   format = args.format
   pos = args.pos
   trans = transition_systems[args.trans]()
-  transduce(corpus, trans, control=format, pos=pos)
+  out = args.output
+  transduce(corpus, trans, control=format, pos=pos, out=out)
 
   

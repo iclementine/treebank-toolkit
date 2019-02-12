@@ -31,6 +31,10 @@ def build_vocab(fp, vp, columns=['form', 'xpos', 'deprel', 'transition'], encodi
                 print("vocabulary is saved at {}".format(vp))
                 
 def gen_oracle(fp, op, transition_system, control='normal', verbose=True, encoding='utf-8'):
+    """
+    generate static oracles for the conll treebank, skip non-projective sentences if the chosen transition system
+    does not support non-projective trees, and dump the corpus(list<ConllSent>)) into a pickle dump.
+    """
     if verbose:
         print("Selected transition system is {}".format(transition_system))
     with open(fp, 'rt', encoding=encoding) as f:

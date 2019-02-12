@@ -266,10 +266,12 @@ class ArcEagerReduce(TransitionSystemBase):
                         valid_transitions.append(UNSHIFT)
             else: # len(buf) > 0
                 valid_transitions.append(RIGHT)
-                if stack[-1] not in arcs:
-                    valid_transitions.append(LEFT)
-                else:
-                    valid_transitions.append(REDUCE)
+                if len(stack) > 1:
+                    if stack[-1] not in arcs:
+                        valid_transitions.append(LEFT)
+                    else:
+                        valid_transitions.append(REDUCE)
+                    
 
         return valid_transitions
     
