@@ -3,7 +3,7 @@ import os
 
 from setuptools import setup
 
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 
 setup(
     name='treebank_toolkit',

@@ -55,6 +55,8 @@ So if you just use it for before-hand static oracle generation, it is still clea
 
 Now, ArcStandard, ArcHybrid, ArcStandardSwap, ArcEagerShift and ArcEagerReduce are all added. Only ArcStandardSwap handles non-projective sentences.
 
+Added Dynamic Oracle for ArcHybrid and ArcEager.
+
 Add `transduce_corpus.py` to process a conll treebank directly, and save the result to a text file that is easily parsed by other programming languages.
 
 ## Usage
@@ -64,6 +66,7 @@ import conllu
 from sentence import ConllSent
 from parser_state import State
 from transition_system import *
+import dynamic
 import random
 
 fname = "path/to/the/conll/file"
@@ -87,11 +90,20 @@ while not (len(state.stack) == 1 and len(state.buf) == 0):
 state = State.init_from_sent(sent)
 std = ArcStandard()
 
-# randomly generate a tree
+# static oracle
 while not (len(state.stack) == 1 and len(state.buf) == 0):
     gold_action = std.gold_action(state)
     print(std.action_to_str(gold_action))
     state = std.step(state, gold_action)
+    
+# dynamic oracle
+state = State.init_from_sent(sent)
+eager = dynamic.ArcEager()
+while not state.is_final():
+    oracle = eager.dynamic_oracle(state)
+    print(oracle)
+    g = random.choice(oracle)
+    state = eager.step(state, g)
 ```
 
 ## transduce a corpus
