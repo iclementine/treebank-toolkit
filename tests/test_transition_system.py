@@ -31,6 +31,7 @@ def test_transition_system(trans):
 			valid = trans._valid_transitions(state)
 			ac = random.choice(valid)
 			state = trans.step(state, ac)
+		assert len([x for x in state.arcs.items() if x[1][0] == 0]) == 1
 			
 test_transition_system(ArcStandard())
 test_transition_system(ArcStandardSwap())

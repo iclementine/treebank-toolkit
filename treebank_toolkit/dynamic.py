@@ -160,34 +160,21 @@ class ArcEager(TransitionSystemBase):
         stack, buf, tags, arcs = parser_state.stack, parser_state.buf, parser_state.tags, parser_state.arcs
         
         valid_transitions = []
-        
-        if parser_state.seen_the_end == False:
-            if len(buf) > 1: # before we have seen the end
-                valid_transitions.append(SHIFT)
+
+        if len(buf) > 1 and not parser_state.seen_the_end: # before we have seen the end
+            valid_transitions.append(SHIFT)
+            
+        if len(buf) == 0 and parser_state.seen_the_end and stack[-1] not in arcs:
+            valid_transitions.append(UNSHIFT)
                 
-            if (len(stack) > 2 or (len(stack) == 2 and len(buf) == 0)) and stack[-1] in arcs: 
-                valid_transitions.append(REDUCE)
+        if (len(stack) > 2 or len(stack) == 2 and len(buf) == 0) and stack[-1] in arcs: 
+            valid_transitions.append(REDUCE)
             
-            left_possible = False
-            if len(buf) > 0 and len(stack) > 1 and stack[-1] not in arcs:
-                valid_transitions.append(LEFT)
-                left_possible = True
+        if len(buf) > 0 and len(stack) > 1 and stack[-1] not in arcs:
+            valid_transitions.append(LEFT)
             
-            if (len(buf) > 1) or (len(buf) == 1 and not left_possible):
-                valid_transitions.append(RIGHT)
-        else:
-            if len(buf) == 0:
-                if len(stack) > 1:
-                    if stack[-1] in arcs:
-                        valid_transitions.append(REDUCE)
-                    else:
-                        valid_transitions.append(UNSHIFT)
-            else: # len(buf) > 0
-                valid_transitions.append(RIGHT)
-                if stack[-1] not in arcs:
-                    valid_transitions.append(LEFT)
-                else:
-                    valid_transitions.append(REDUCE)
+        if len(buf) > 0 and (len(stack) > 1 or (len(stack) == 1 and not any([arcs[x][0] == 0 for x in arcs]))):
+            valid_transitions.append(RIGHT)
 
         return valid_transitions
     
