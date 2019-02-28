@@ -36,7 +36,7 @@ def transduce(corpus, trans, control='normal', pos='upos', out=sys.stdout):
     state = tbtk.State.init_from_sent(s)
     while not state.is_final():
       g = trans.gold_action(state)
-      transitions.append(trans.action_to_str(g))
+      transitions.append(trans.action_to_str(g), control=control)
       state = trans.step(state, g)
     s.transitions = transitions
     print("form:", ' '.join(s.form), file=out)
