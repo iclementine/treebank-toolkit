@@ -10,7 +10,7 @@ class ConllSent(object):
         self.form = ['<root>'] + form
         self.upos = ['ROOT'] + upos
         self.xpos = ['ROOT'] + xpos
-        self.head = [-1] + head
+        self.head = [0] + head
         self.deprel = ['ROOT'] + deprel
         self.children = self._derive_children()
         self.porder = self._projective_order()

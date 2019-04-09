@@ -409,10 +409,10 @@ class ArcStandard(TransitionSystemBase):
             buffer_top_head = heads[buf[-1]]
             stack_top_head = heads[stack[-1]]
             stack_top_children = children[stack[-1]]
-            # 1. if there is no arc between s0 and b0, and S0 has collected all its right children [then there is no chance to expose S0 on the top of the stack, so no chance to reduce it]
-            # 2. if s0 has a right head(in the buffer) and s0 has not collected all its left children [then s0's head won't be reduced, there is no chance for s0 to reduce to its head cause it cannot be exposed on the top of the stack to collect its left children]
+            # 1. if s0 has collected all its right children and s0 has left head [then there is no chance to expose s0 on the top of the stack, so no chance to reduce it (or collect its uncollected left children)]
+            # 2. if s0 has collected all its right children but not all its left children and s0 has a right head [then there is no chance to expose s0 on the top of the stack, and to collect its left children before reduce it to its head]
             # then shift is not an dynamic oracle
-            if not ((buffer_top_head != stack[-1] and stack_top_head != buf[-1] and stack_top_head < stack[-1] and (not any(x in buf for x in stack_top_children))) or (stack_top_head > stack[-1] and any([x in stack for x in stack_top_children]))):
+            if not (not any(x in buf for x in stack_top_children) and (stack_top_head < stack[-1] or (stack_top_head > stack[-1] and any(x in stack for x in stack_top_children)))):
                 oracle.append(SHIFT)
             
         if RIGHT in valid:
